@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marcha Lab | Prof. Felipe Cerqueira</title>
+<meta name="description" content="Ferramentas práticas para avaliar, medir e estudar a marcha humana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --ink:#172033; --muted:#5B6678; --line:#D5DBE3;
+  --stance:#0F766E; --stance-soft:#D5EFEC; --swing:#B45309; --swing-soft:#FBE8D3;
+  --cta:#172033; --cta-ink:#FFFFFF; --danger:#B42318;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0F1621; --surface:#172131; --ink:#E8EDF4; --muted:#9AA6B8; --line:#2A3648;
+    --stance:#2DB3A6; --stance-soft:#11353A; --swing:#E8A355; --swing-soft:#3A2A17;
+    --cta:#E8EDF4; --cta-ink:#0F1621; --danger:#F97066;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.55;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+h1,h2,h3{font-family:"Syne","DM Sans",system-ui,sans-serif; line-height:1.15; margin:0}
+button,input,select{font:inherit; color:inherit}
+:focus-visible{outline:3px solid var(--stance); outline-offset:2px; border-radius:6px}
+.wrap{max-width:720px; margin:0 auto; padding:0 20px 120px}
+
+/* Topo */
+.top{display:flex; align-items:center; justify-content:space-between; padding:18px 0 10px}
+.brand{font-family:"Syne",sans-serif; font-weight:800; font-size:1.25rem; text-decoration:none; color:var(--ink); letter-spacing:-.01em}
+.brand small{display:block; font-family:"DM Sans",sans-serif; font-weight:500; font-size:.78rem; color:var(--muted); letter-spacing:0}
+.back{background:none; border:0; padding:8px 0; color:var(--muted); cursor:pointer; font-weight:500}
+.back:hover{color:var(--ink)}
+
+/* Ciclo da marcha */
+.cycle{margin:22px 0 8px}
+.cycle-periods{display:flex; gap:3px; font-size:.82rem; font-weight:700; margin-bottom:3px}
+.cycle-periods span{padding:6px 10px; border-radius:8px 8px 0 0}
+.p-stance{background:var(--stance); color:#fff}
+.p-swing{background:var(--swing); color:#fff}
+.cycle-phases{display:flex; gap:3px}
+.seg{min-width:8px; height:46px; border:0; border-radius:0 0 8px 8px; font-size:.78rem; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0}
+.seg.apoio{background:var(--stance-soft); color:var(--stance)}
+.seg.balanco{background:var(--swing-soft); color:var(--swing)}
+button.seg{cursor:pointer}
+.seg.on.apoio{background:var(--stance); color:#fff}
+.seg.on.balanco{background:var(--swing); color:#fff}
+.cycle-scale{position:relative; height:20px; font-size:.75rem; color:var(--muted)}
+.cycle-scale span{position:absolute; top:4px}
+.cycle-scale span:nth-child(2){left:62%; transform:translateX(-50%)}
+.cycle-scale span:last-child{right:0}
+
+/* Início */
+.hero{padding:26px 0 6px}
+.hero h1{font-size:clamp(2rem,7vw,3rem); font-weight:800; letter-spacing:-.02em; max-width:14ch}
+.hero p{color:var(--muted); max-width:52ch; margin:12px 0 0}
+.modules{margin:28px 0; border-top:1px solid var(--line)}
+.module{display:grid; grid-template-columns:1fr auto; gap:4px 16px; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid var(--line); padding:20px 4px; cursor:pointer}
+.module h2{font-size:1.25rem; font-weight:700}
+.module p{grid-column:1; margin:0; color:var(--muted); font-size:.95rem}
+.module .chev{grid-row:1/3; grid-column:2; align-self:center; font-size:1.6rem; color:var(--muted)}
+.module:hover h2{color:var(--stance)}
+
+/* Masterclass */
+.mc{background:var(--cta); color:var(--cta-ink); border-radius:18px; padding:26px 22px; margin:30px 0}
+.mc h2{font-size:1.5rem; font-weight:800}
+.mc p{margin:8px 0 0; opacity:.85}
+.mc dl{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:16px 0 20px; font-size:.95rem}
+.mc dt{opacity:.7}
+.mc dd{margin:0; font-weight:500}
+.mc a{display:inline-block; background:var(--cta-ink); color:var(--cta); text-decoration:none; font-weight:700; padding:12px 20px; border-radius:999px}
+
+/* Títulos de módulo */
+.view-head{padding:10px 0 4px}
+.view-head h1{font-size:clamp(1.6rem,5.5vw,2.2rem); font-weight:800; letter-spacing:-.01em}
+.view-head p{color:var(--muted); margin:8px 0 0; max-width:56ch}
+
+/* Chips */
+.chips{display:flex; gap:8px; overflow-x:auto; padding:16px 0 6px; scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto; border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:7px 14px; font-size:.88rem; cursor:pointer; white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+
+/* Formulários */
+.fields{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px}
+.field{display:flex; flex-direction:column; gap:5px}
+.field.full{grid-column:1/-1}
+.field label{font-size:.85rem; font-weight:500; color:var(--muted)}
+.field input,.field select{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:11px 12px; min-height:46px; width:100%}
+.hint{font-size:.8rem; color:var(--muted); margin:0}
+
+/* Lista de desvios */
+.seg-title{font-size:1.05rem; font-weight:700; margin:26px 0 8px}
+.dev{display:flex; gap:12px; align-items:flex-start; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:13px 14px; margin-bottom:8px; cursor:pointer}
+.dev input{width:22px; height:22px; margin:1px 0 0; accent-color:var(--stance); flex:0 0 auto}
+.dev:has(input:checked){border-color:var(--stance); box-shadow:inset 0 0 0 1px var(--stance)}
+.dev-name{font-weight:500}
+.tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:6px}
+.tag{font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:6px}
+.tag.apoio{background:var(--stance-soft); color:var(--stance)}
+.tag.balanco{background:var(--swing-soft); color:var(--swing)}
+.empty{color:var(--muted); padding:20px 0}
+
+/* Barra fixa */
+.dock{position:fixed; left:0; right:0; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px)); z-index:20}
+.dock-inner{max-width:720px; margin:0 auto; display:flex; gap:10px; align-items:center; justify-content:space-between}
+.dock-inner span{color:var(--muted); font-size:.9rem}
+.btn{border:0; border-radius:999px; padding:13px 22px; font-weight:700; cursor:pointer; background:var(--cta); color:var(--cta-ink); text-decoration:none; display:inline-block; text-align:center}
+.btn:disabled{opacity:.4; cursor:not-allowed}
+.btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+.actions{display:flex; flex-wrap:wrap; gap:10px; margin:22px 0}
+
+/* Resultado */
+.report-meta{display:flex; flex-wrap:wrap; gap:6px 18px; color:var(--muted); font-size:.9rem; margin-top:10px}
+.finding{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:18px; margin:12px 0}
+.finding h3{font-size:1.08rem; font-weight:700}
+.finding h4{font-family:"DM Sans",sans-serif; font-size:.85rem; font-weight:700; color:var(--muted); margin:14px 0 4px}
+.finding ul{margin:0; padding-left:20px}
+.finding li{margin:2px 0}
+.finding p{margin:0}
+.teaser{margin-top:14px; padding-top:12px; border-top:1px dashed var(--line); font-size:.88rem; color:var(--muted)}
+.disclaimer{font-size:.82rem; color:var(--muted); margin-top:18px}
+
+/* Calculadora */
+.result-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:18px 0}
+.metric{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px}
+.metric b{display:block; font-family:"Syne",sans-serif; font-size:1.6rem; font-weight:700; line-height:1.1}
+.metric span{font-size:.8rem; color:var(--muted)}
+.compare{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin:10px 0}
+.compare p{margin:4px 0}
+.meter{position:relative; height:10px; border-radius:6px; margin:16px 0 26px; background:linear-gradient(90deg,var(--danger) 0 22%,var(--swing) 22% 44%,var(--stance) 44% 100%)}
+.meter i{position:absolute; top:-5px; width:4px; height:20px; background:var(--ink); border-radius:2px; transform:translateX(-50%)}
+.meter small{position:absolute; top:14px; font-size:.7rem; color:var(--muted); transform:translateX(-50%)}
+
+/* Atlas */
+.phase-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px; margin:14px 0}
+.phase-card h2{font-size:1.5rem; font-weight:800}
+.phase-sub{color:var(--muted); margin-top:4px}
+.angles{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0}
+.angle{border-radius:10px; padding:10px 12px}
+.angle.apoio{background:var(--stance-soft)}
+.angle.balanco{background:var(--swing-soft)}
+.angle span{font-size:.78rem; color:var(--muted); display:block}
+.angle b{font-size:.98rem}
+.phase-card h3{font-family:"DM Sans",sans-serif; font-size:.9rem; font-weight:700; color:var(--muted); margin:16px 0 4px}
+.phase-card p,.phase-card ul{margin:0}
+.phase-card ul{padding-left:20px}
+
+/* Modal */
+.modal{position:fixed; inset:0; background:rgba(10,15,25,.55); display:none; align-items:flex-end; justify-content:center; z-index:50; padding:0}
+.modal.open{display:flex}
+.sheet{background:var(--surface); width:100%; max-width:560px; border-radius:20px 20px 0 0; padding:24px 20px calc(24px + env(safe-area-inset-bottom,0px)); max-height:92vh; overflow:auto}
+@media (min-width:640px){.modal{align-items:center}.sheet{border-radius:20px}}
+.sheet h2{font-size:1.35rem; font-weight:800}
+.sheet>p{color:var(--muted); margin:8px 0 0}
+.consent{display:flex; gap:10px; align-items:flex-start; font-size:.85rem; color:var(--muted); margin:14px 0}
+.consent input{width:20px; height:20px; flex:0 0 auto; margin-top:2px; accent-color:var(--stance)}
+.error{color:var(--danger); font-size:.85rem; min-height:1.2em; margin:4px 0}
+
+.toast{position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:999px; font-size:.9rem; z-index:60; opacity:0; pointer-events:none; transition:opacity .2s}
+.toast.show{opacity:1}
+
+/* Login e conta */
+.top-right{display:flex; gap:18px; align-items:center}
+.auth{max-width:420px; margin:36px auto 0}
+.auth h1{font-size:clamp(1.8rem,6vw,2.4rem); font-weight:800; letter-spacing:-.01em}
+.auth>p{color:var(--muted); margin:8px 0 0}
+.auth .fields{grid-template-columns:1fr}
+.auth-links{display:flex; flex-direction:column; align-items:flex-start; gap:2px; margin-top:16px}
+.linkbtn{background:none; border:0; padding:6px 0; color:var(--stance); font-weight:500; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+.notice{background:var(--stance-soft); border-radius:10px; padding:10px 12px; font-size:.9rem; margin:10px 0}
+.bonus{font-weight:500; color:var(--stance)}
+.field textarea{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:11px 12px; width:100%; font:inherit; color:inherit; resize:vertical}
+.aluno{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); font-size:.95rem; overflow-wrap:anywhere}
+
+.print-only{display:none}
+[hidden]{display:none !important}
+
+@media (max-width:480px){
+  .fields{grid-template-columns:1fr}
+  .result-grid{grid-template-columns:1fr 1fr 1fr}
+  .metric b{font-size:1.3rem}
+  .angles{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+
+@media print{
+  :root{--bg:#fff; --surface:#fff; --ink:#000; --muted:#444; --line:#bbb; color-scheme:light}
+  body{padding:0; font-size:12pt}
+  .top,.dock,.actions,.no-print,.modal,.toast{display:none !important}
+  .wrap{padding:0; max-width:none}
+  .print-only{display:block}
+  .finding,.compare,.metric{break-inside:avoid}
+  .mc{background:#fff; color:#000; border:1px solid #000}
+  .mc a{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#">Marcha Lab<small>Prof. Felipe Cerqueira</small></a>
+    <div class="top-right">
+      <button class="back" id="backBtn" hidden>‹ Início</button>
+      <button class="back" id="contaBtn" hidden>Minha conta</button>
+    </div>
+  </header>
+  <main id="app"></main>
+</div>
+
+<div class="dock" id="dock" hidden>
+  <div class="dock-inner">
+    <span id="dockCount">Nenhum desvio marcado</span>
+    <button class="btn" id="dockBtn" disabled>Ver resultado</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO — edite apenas este bloco
+   ========================================================= */
+const MASTERCLASS = {
+  data: "7 de novembro",
+  local: "Aracaju/SE",
+  valor: "R$ 60 no Pix ou R$ 65 em até 3x",
+  link: "https://gestordecursos.ortoflix.com/#/inscricao/UvpgKORBmYeZ8G1rgSyG"
+};
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDFGpA0afeUKZv5RjlIFd4TUwFULkeUY_U",
+  authDomain: "marcha-lab.firebaseapp.com",
+  projectId: "marcha-lab",
+  storageBucket: "marcha-lab.firebasestorage.app",
+  messagingSenderId: "223989406619",
+  appId: "1:223989406619:web:233e15e1b1afed69b15f3e"
+};
+const ADMIN_EMAIL = "flcerqueira@gmail.com"; // você: entra sem estar na lista e gerencia os alunos
+/* Regras do Firestore (troque o email do admin):
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /alunos/{email} {
+      allow get: if true;
+      allow list, create, update, delete: if request.auth != null && request.auth.token.email == "flcerqueira@gmail.com";
+    }
+  }
+}
+No console do Firebase: Authentication > Método de login > ativar Email/senha,
+e em Configurações > Domínios autorizados, adicionar o domínio do GitHub Pages. */
+
+/* =========================================================
+   DADOS
+   ========================================================= */
+const PHASES = [
+  {id:"ic", sigla:"CI", nome:"Contato inicial", ini:0, fim:2, periodo:"apoio",
+   objetivo:"Posicionar o membro para iniciar o rolamento sobre o calcanhar.",
+   ang:{q:"20° de flexão", j:"0 a 5° de flexão", t:"Neutro (0°)"},
+   musc:["Glúteo máximo e isquiotibiais (estabilizam o quadril)","Quadríceps (prepara a absorção de carga)","Tibial anterior (mantém o tornozelo em neutro)"]},
+  {id:"lr", sigla:"RC", nome:"Resposta à carga", ini:2, fim:12, periodo:"apoio",
+   objetivo:"Absorver o choque, estabilizar o membro sob carga e preservar a progressão.",
+   ang:{q:"20° de flexão", j:"15 a 20° de flexão", t:"10° de flexão plantar"},
+   musc:["Vastos em ação excêntrica (controlam a flexão do joelho)","Tibial anterior excêntrico (controla a descida do antepé)","Glúteo médio (estabilidade pélvica no plano frontal)","Glúteo máximo"]},
+  {id:"mst", sigla:"AM", nome:"Apoio médio", ini:12, fim:31, periodo:"apoio",
+   objetivo:"Avançar o corpo sobre o pé apoiado, com estabilidade do membro e do tronco.",
+   ang:{q:"Neutro (0°)", j:"Cerca de 5° de flexão", t:"5° de dorsiflexão"},
+   musc:["Sóleo e gastrocnêmio excêntricos (controlam o avanço da tíbia)","Glúteo médio (estabilidade pélvica em apoio unipodal)"]},
+  {id:"tst", sigla:"AT", nome:"Apoio terminal", ini:31, fim:50, periodo:"apoio",
+   objetivo:"Levar o corpo à frente do pé de apoio, com elevação do calcanhar.",
+   ang:{q:"20° de extensão aparente", j:"Cerca de 5° de flexão", t:"10° de dorsiflexão"},
+   musc:["Tríceps sural (pico de atividade)","Fibulares e tibial posterior (estabilidade do retropé)"]},
+  {id:"psw", sigla:"PB", nome:"Pré-balanço", ini:50, fim:62, periodo:"apoio",
+   objetivo:"Transferir a carga para o outro membro e preparar o balanço.",
+   ang:{q:"10° de extensão", j:"40° de flexão", t:"15 a 20° de flexão plantar"},
+   musc:["Adutor longo e reto femoral (iniciam o avanço da coxa)","Final da atividade do tríceps sural"]},
+  {id:"isw", sigla:"BI", nome:"Balanço inicial", ini:62, fim:75, periodo:"balanco",
+   objetivo:"Tirar o pé do chão e avançar a coxa.",
+   ang:{q:"15° de flexão", j:"60° de flexão", t:"5 a 10° de flexão plantar"},
+   musc:["Iliopsoas e flexores do quadril","Cabeça curta do bíceps femoral (flexão do joelho)","Tibial anterior"]},
+  {id:"msw", sigla:"BM", nome:"Balanço médio", ini:75, fim:87, periodo:"balanco",
+   objetivo:"Avançar o membro mantendo o pé livre do solo.",
+   ang:{q:"25° de flexão", j:"25° de flexão", t:"Neutro (0°)"},
+   musc:["Tibial anterior (mantém o pé livre do solo)","Flexores do quadril com baixa atividade"]},
+  {id:"tsw", sigla:"BT", nome:"Balanço terminal", ini:87, fim:100, periodo:"balanco",
+   objetivo:"Completar o avanço do membro e prepará-lo para o contato.",
+   ang:{q:"20° de flexão", j:"0 a 5° de flexão", t:"Neutro (0°)"},
+   musc:["Isquiotibiais excêntricos (desaceleram a perna)","Quadríceps (prepara a extensão do joelho)","Tibial anterior"]}
+];
+
+const SEGMENTS = [
+  {id:"pe", nome:"Pé e tornozelo"},
+  {id:"joelho", nome:"Joelho"},
+  {id:"quadril", nome:"Quadril e pelve"},
+  {id:"tronco", nome:"Tronco"}
+];
+
+const DEVIATIONS = [
+  {id:"antepe", seg:"pe", nome:"Contato inicial com antepé ou pé plano", fases:["ic"],
+   causas:["Fraqueza de dorsiflexores","Encurtamento ou contratura do tríceps sural","Joelho mantido em flexão no contato","Dor no calcanhar (ex.: fasciopatia plantar)"],
+   testes:["Força de tibial anterior","Teste de Silfverskiöld","Lunge test (dorsiflexão em carga)"],
+   conduta:"Fortalecer dorsiflexores, recuperar a dorsiflexão e investigar dor no retropé."},
+  {id:"slap", seg:"pe", nome:"Queda rápida do antepé após o contato", fases:["lr"],
+   causas:["Déficit excêntrico do tibial anterior","Lesão do nervo fibular (investigar)"],
+   testes:["Força de dorsiflexores","Sensibilidade no território do fibular"],
+   conduta:"Treino excêntrico de dorsiflexores. Encaminhar se houver sinal neurológico."},
+  {id:"pronacao", seg:"pe", nome:"Pronação excessiva ou prolongada", fases:["lr","mst","tst"],
+   causas:["Déficit de dorsiflexão compensado pela subtalar","Fraqueza do tibial posterior e dos intrínsecos do pé","Rotação interna femoral por déficit de glúteos","Retropé valgo estrutural"],
+   testes:["Navicular drop","Foot Posture Index (FPI-6)","Single heel rise","Lunge test"],
+   conduta:"Tibial posterior, intrínsecos e controle de quadril. Avaliar a necessidade de palmilha."},
+  {id:"calc-precoce", seg:"pe", nome:"Elevação precoce do calcanhar", fases:["mst"],
+   causas:["Restrição de dorsiflexão (sóleo, gastrocnêmio ou cápsula)","Pé equino"],
+   testes:["Lunge test","Teste de Silfverskiöld"],
+   conduta:"Ganho de dorsiflexão com mobilização articular e alongamento do tríceps sural."},
+  {id:"impulsao", seg:"pe", nome:"Impulsão reduzida ou ausente", fases:["tst","psw"],
+   causas:["Fraqueza do tríceps sural","Dor ou rigidez do hálux","Dor no antepé"],
+   testes:["Single heel rise (número de repetições)","ADM de extensão da 1ª metatarsofalângica"],
+   conduta:"Fortalecimento progressivo e unilateral da panturrilha e mobilidade do hálux."},
+  {id:"arrasto", seg:"pe", nome:"Arrasto do pé no balanço", fases:["isw","msw"],
+   causas:["Fraqueza de dorsiflexores","Flexão insuficiente de joelho ou quadril no balanço"],
+   testes:["Força de dorsiflexores e flexores do quadril","ADM de flexão do joelho"],
+   conduta:"Identificar qual segmento não encurta o membro e tratar dorsiflexores e flexores do quadril."},
+
+  {id:"recurvato", seg:"joelho", nome:"Hiperextensão do joelho (recurvato)", fases:["lr","mst","tst"],
+   causas:["Fraqueza de quadríceps (travamento passivo)","Restrição de dorsiflexão ou pé equino","Frouxidão capsuloligamentar posterior"],
+   testes:["Força de quadríceps","Lunge test","Hiperextensão passiva comparativa"],
+   conduta:"Controle excêntrico do quadríceps em cadeia fechada com leve flexão e mobilidade de tornozelo."},
+  {id:"flexo-apoio", seg:"joelho", nome:"Flexão excessiva do joelho no apoio", fases:["mst","tst"],
+   causas:["Déficit de extensão (contratura, derrame ou dor)","Fraqueza do sóleo, com avanço descontrolado da tíbia","Flexo de quadril associado","Encurtamento de isquiotibiais"],
+   testes:["ADM de extensão do joelho","Teste de Thomas","Single heel rise"],
+   conduta:"Recuperar a extensão do joelho, fortalecer o sóleo e tratar dor e derrame."},
+  {id:"valgo", seg:"joelho", nome:"Valgo dinâmico", fases:["lr","mst"],
+   causas:["Déficit de abdutores e rotadores laterais do quadril","Pronação excessiva","Déficit de controle neuromotor"],
+   testes:["Step down ou agachamento unipodal","Dinamometria de abdutores e rotadores laterais"],
+   conduta:"Fortalecer abdutores e rotadores laterais e treinar o controle em tarefas unipodais."},
+  {id:"thrust", seg:"joelho", nome:"Thrust lateral (varo dinâmico)", fases:["lr","mst"],
+   causas:["Osteoartrite do compartimento medial","Insuficiência do canto posterolateral"],
+   testes:["Alinhamento em carga","Estresse em varo e dial test"],
+   conduta:"Fortalecer quadríceps e quadril, investigar instabilidade e considerar órtese."},
+  {id:"joelho-rigido", seg:"joelho", nome:"Pouca flexão do joelho no balanço", fases:["psw","isw"],
+   causas:["Déficit de ADM de flexão (pós-operatório, derrame ou dor)","Atividade excessiva do reto femoral","Impulsão fraca no pré-balanço"],
+   testes:["ADM de flexão","Teste de Ely","Single heel rise"],
+   conduta:"Ganho de flexão e treino de impulsão, conforme a causa da rigidez."},
+
+  {id:"trendelenburg", seg:"quadril", nome:"Queda pélvica contralateral (Trendelenburg)", fases:["lr","mst"],
+   causas:["Fraqueza de glúteo médio e mínimo","Dor ou artrose no quadril de apoio"],
+   testes:["Teste de Trendelenburg","Dinamometria de abdutores"],
+   conduta:"Fortalecimento progressivo de abdutores, da cadeia aberta ao apoio unipodal."},
+  {id:"duchenne", seg:"quadril", nome:"Inclinação do tronco para o lado de apoio", fases:["lr","mst"],
+   causas:["Compensação de fraqueza de abdutores","Dor no quadril (estratégia para reduzir a carga articular)"],
+   testes:["Teste de Trendelenburg","Avaliação da dor no quadril"],
+   conduta:"Diferenciar fraqueza de estratégia antálgica e então tratar abdutores e carga."},
+  {id:"ext-quadril", seg:"quadril", nome:"Extensão de quadril reduzida no apoio terminal", fases:["tst"],
+   causas:["Encurtamento de iliopsoas e reto femoral","Rigidez capsular (ex.: artrose)","Compensação com anteversão pélvica e hiperlordose"],
+   testes:["Teste de Thomas modificado","ADM de extensão do quadril"],
+   conduta:"Mobilidade dos flexores do quadril e glúteo máximo em amplitude final."},
+  {id:"rot-interna", seg:"quadril", nome:"Rotação interna excessiva do membro", fases:["lr","mst"],
+   causas:["Déficit de glúteos e rotadores laterais","Anteversão femoral aumentada","Pronação excessiva"],
+   testes:["ADM rotacional do quadril e teste de Craig","Dinamometria de rotadores laterais"],
+   conduta:"Rotadores laterais e glúteos, respeitando alterações ósseas estruturais."},
+  {id:"circunducao", seg:"quadril", nome:"Circundução ou elevação da pelve no balanço", fases:["isw","msw","tsw"],
+   causas:["Membro funcionalmente longo (joelho rígido, déficit de dorsiflexão)","Fraqueza de flexores do quadril","Discrepância de comprimento dos membros inferiores"],
+   testes:["Medida dos membros inferiores","ADM de joelho e tornozelo","Força de flexores do quadril"],
+   conduta:"Tratar a causa primária que impede o encurtamento do membro."},
+
+  {id:"tronco-post", seg:"tronco", nome:"Inclinação posterior do tronco no contato", fases:["ic","lr"],
+   causas:["Fraqueza de glúteo máximo"],
+   testes:["Força de extensores do quadril"],
+   conduta:"Fortalecer o glúteo máximo em cadeia fechada."},
+  {id:"tronco-ant", seg:"tronco", nome:"Inclinação anterior do tronco", fases:["lr","mst"],
+   causas:["Fraqueza de quadríceps (vetor de reação passa à frente do joelho)","Flexo de quadril","Dor lombar"],
+   testes:["Força de quadríceps","Teste de Thomas"],
+   conduta:"Quadríceps e mobilidade do quadril, com avaliação da coluna lombar."}
+];
+
+// Velocidade de marcha confortável (m/s) — Bohannon & Andrews, 2011
+const NORMS = {
+  M:[[20,29,1.36],[30,39,1.43],[40,49,1.43],[50,59,1.43],[60,69,1.34],[70,79,1.26],[80,120,0.97]],
+  F:[[20,29,1.34],[30,39,1.34],[40,49,1.39],[50,59,1.31],[60,69,1.24],[70,79,1.13],[80,120,0.94]]
+};
+
+/* =========================================================
+   ESTADO
+   ========================================================= */
+const state = {
+  selected:new Set(),
+  filter:"todas",
+  paciente:{id:"", lado:"Bilateral"},
+  calc:{dist:"10", tempo:"", passos:"", idade:"", sexo:"F", ritmo:"habitual"},
+  calcInReport:null,
+  atlas:"ic"
+};
+const $ = s => document.querySelector(s);
+const app = $("#app");
+const phaseById = id => PHASES.find(p=>p.id===id);
+const fmt = (n,d=2) => n.toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+/* =========================================================
+   COMPONENTES
+   ========================================================= */
+function cycleBar(active, clickable){
+  const segs = PHASES.map(p=>{
+    const w = p.fim-p.ini, label = w>=8 ? p.sigla : "";
+    const cls = `seg ${p.periodo} ${p.id===active?"on":""}`;
+    return clickable
+      ? `<button class="${cls}" style="flex:${w}" data-phase="${p.id}" aria-label="${p.nome}" aria-pressed="${p.id===active}">${label}</button>`
+      : `<span class="${cls}" style="flex:${w}">${label}</span>`;
+  }).join("");
+  return `<div class="cycle" ${clickable?"":'role="img" aria-label="Ciclo da marcha: apoio 62%, balanço 38%"'}>
+    <div class="cycle-periods"><span class="p-stance" style="flex:62">Apoio</span><span class="p-swing" style="flex:38">Balanço</span></div>
+    <div class="cycle-phases">${segs}</div>
+    <div class="cycle-scale"><span>0%</span><span>62%</span><span>100%</span></div>
+  </div>`;
+}
+
+function masterclassBlock(){
+  return `<section class="mc">
+    <h2>Masterclass Biomecânica da Marcha</h2>
+    <p>Quatro horas presenciais para ligar o que você observa na marcha ao raciocínio clínico e aos exercícios.</p>
+    <dl>
+      <dt>Quando</dt><dd>${esc(MASTERCLASS.data)}</dd>
+      <dt>Onde</dt><dd>${esc(MASTERCLASS.local)}</dd>
+      <dt>Valor</dt><dd>${esc(MASTERCLASS.valor)}</dd>
+      <dt>Certificado</dt><dd>4 horas</dd>
+    </dl>
+    <a href="${esc(MASTERCLASS.link)}" target="_blank" rel="noopener">Garantir minha vaga</a>
+  </section>`;
+}
+
+function phaseTags(ids){
+  return `<div class="tags">${ids.map(id=>{const p=phaseById(id);return `<span class="tag ${p.periodo}">${p.nome}</span>`}).join("")}</div>`;
+}
+
+/* =========================================================
+   TELAS
+   ========================================================= */
+function viewHome(){
+  return `<section class="hero">
+      <h1>A marcha, fase a fase</h1>
+      <p>Ferramentas para observar desvios, medir a velocidade e revisar o que acontece em cada fase do ciclo.</p>
+      <p class="bonus">Bônus para os inscritos na Masterclass Biomecânica da Marcha.</p>
+      ${cycleBar(null,false)}
+    </section>
+    <nav class="modules" aria-label="Ferramentas">
+      <button class="module" data-go="analise"><h2>Análise observacional</h2><p>Marque os desvios que você vê e receba causas prováveis, testes para confirmar e a direção do tratamento.</p><span class="chev" aria-hidden="true">›</span></button>
+      <button class="module" data-go="calc"><h2>Teste de caminhada de 10 m</h2><p>Calcule velocidade, cadência e comprimento do passo e compare com valores de referência.</p><span class="chev" aria-hidden="true">›</span></button>
+      <button class="module" data-go="atlas"><h2>Atlas das fases</h2><p>Ângulos articulares, músculos ativos e objetivo funcional de cada uma das oito fases.</p><span class="chev" aria-hidden="true">›</span></button>
+    </nav>`;
+}
+
+function viewAnalise(){
+  const list = SEGMENTS.map(s=>{
+    const items = DEVIATIONS.filter(d=>d.seg===s.id && (state.filter==="todas" || d.fases.includes(state.filter)));
+    if(!items.length) return "";
+    return `<h2 class="seg-title">${s.nome}</h2>` + items.map(d=>`
+      <label class="dev"><input type="checkbox" data-dev="${d.id}" ${state.selected.has(d.id)?"checked":""}>
+        <span><span class="dev-name">${d.nome}</span>${phaseTags(d.fases)}</span></label>`).join("");
+  }).join("");
+  const chips = [`<button class="chip" data-filter="todas" aria-pressed="${state.filter==="todas"}">Todas as fases</button>`]
+    .concat(PHASES.map(p=>`<button class="chip" data-filter="${p.id}" aria-pressed="${state.filter===p.id}">${p.nome}</button>`)).join("");
+  return `<div class="view-head">
+      <h1>Análise observacional</h1>
+      <p>Observe o paciente de frente, de costas e de perfil. Marque o que você vê e depois veja o resultado.</p>
+    </div>
+    <div class="fields">
+      <div class="field"><label for="pId">Paciente (iniciais)</label><input id="pId" maxlength="12" value="${esc(state.paciente.id)}" placeholder="Ex.: M.S."></div>
+      <div class="field"><label for="pLado">Lado avaliado</label>
+        <select id="pLado">${["Bilateral","Direito","Esquerdo"].map(l=>`<option ${state.paciente.lado===l?"selected":""}>${l}</option>`).join("")}</select></div>
+      <p class="hint full" style="grid-column:1/-1">Use só as iniciais. Os dados do paciente ficam neste aparelho e não são enviados.</p>
+    </div>
+    <div class="chips" role="group" aria-label="Filtrar por fase">${chips}</div>
+    ${list || `<p class="empty">Nenhum desvio cadastrado para esta fase.</p>`}`;
+}
+
+function viewResultado(){
+  const devs = DEVIATIONS.filter(d=>state.selected.has(d.id));
+  const c = state.calcInReport;
+  const hoje = new Date().toLocaleDateString("pt-BR");
+  if(!devs.length && !c){
+    return `<div class="view-head"><h1>Relatório</h1>
+      <p>O relatório está vazio. Marque desvios na análise observacional ou adicione um teste de 10 m.</p></div>
+      <div class="actions"><button class="btn" data-go="analise">Abrir análise observacional</button><button class="btn ghost" data-go="calc">Abrir teste de 10 m</button></div>`;
+  }
+  const findings = devs.map(d=>`
+    <article class="finding">
+      <h3>${d.nome}</h3>${phaseTags(d.fases)}
+      <h4>Causas prováveis</h4><ul>${d.causas.map(x=>`<li>${x}</li>`).join("")}</ul>
+      <h4>Para confirmar</h4><ul>${d.testes.map(x=>`<li>${x}</li>`).join("")}</ul>
+      <h4>Direção do tratamento</h4><p>${d.conduta}</p>
+    </article>`).join("");
+  const calcHtml = c ? `<article class="finding">
+      <h3>Teste de caminhada de 10 m</h3>
+      <h4>Resultados</h4>
+      <ul><li>Velocidade: ${fmt(c.v)} m/s (ritmo ${c.ritmo})</li>
+      ${c.cad?`<li>Cadência: ${fmt(c.cad,0)} passos/min</li>`:""}
+      ${c.passo?`<li>Comprimento do passo: ${fmt(c.passo)} m</li>`:""}
+      ${c.pct?`<li>${fmt(c.pct,0)}% do valor de referência para idade e sexo (${fmt(c.norm)} m/s)</li>`:""}
+      <li>${c.faixa}</li></ul>
+    </article>` : "";
+  return `<div class="view-head">
+      <p class="print-only"><strong>Marcha Lab | Prof. Felipe Cerqueira</strong></p>
+      <h1>Relatório de análise da marcha</h1>
+      <div class="report-meta"><span>Data: ${hoje}</span>${state.paciente.id?`<span>Paciente: ${esc(state.paciente.id)}</span>`:""}<span>Lado: ${state.paciente.lado}</span></div>
+    </div>
+    ${findings}${calcHtml}
+    <p class="disclaimer">As causas listadas são hipóteses a partir da observação. Confirme com o exame físico antes de definir a conduta. Ângulos e referências seguem Perry e Burnfield (2010) e Bohannon e Andrews (2011).</p>
+    <div class="actions">
+      <button class="btn" id="pdfBtn">Salvar em PDF</button>
+      <button class="btn ghost" data-go="analise">Editar desvios</button>
+      ${c?`<button class="btn ghost" id="rmCalc">Remover teste de 10 m</button>`:""}
+    </div>`;
+}
+
+function computeCalc(){
+  const c = state.calc;
+  const dist = parseFloat(String(c.dist).replace(",", "."));
+  const tempo = parseFloat(String(c.tempo).replace(",", "."));
+  const passos = parseInt(c.passos,10);
+  const idade = parseInt(c.idade,10);
+  if(!(dist>0) || !(tempo>0)) return null;
+  const v = dist/tempo;
+  const r = {v, ritmo:c.ritmo};
+  if(passos>0){ r.cad = passos/tempo*60; r.passo = dist/passos; }
+  if(c.ritmo==="habitual" && idade>=20){
+    const row = NORMS[c.sexo].find(([a,b])=>idade>=a && idade<=b);
+    if(row){ r.norm=row[2]; r.pct=v/row[2]*100; }
+  }
+  if(v<0.4) r.faixa="Abaixo de 0,4 m/s: faixa de deambulação domiciliar";
+  else if(v<0.8) r.faixa="Entre 0,4 e 0,8 m/s: deambulação comunitária limitada";
+  else if(v<1.0) r.faixa="Entre 0,8 e 1,0 m/s: deambulação comunitária; em idosos, abaixo de 1,0 m/s indica maior risco de desfechos adversos";
+  else r.faixa="A partir de 1,0 m/s: acima do limiar de risco descrito para idosos";
+  return r;
+}
+
+function calcResultsHtml(){
+  const r = computeCalc();
+  if(!r) return `<p class="empty">Informe a distância e o tempo para ver os resultados.</p>`;
+  const pos = Math.min(100, r.v/1.8*100);
+  return `<div class="result-grid">
+      <div class="metric"><b>${fmt(r.v)}</b><span>m/s</span></div>
+      <div class="metric"><b>${r.cad?fmt(r.cad,0):"–"}</b><span>passos/min</span></div>
+      <div class="metric"><b>${r.passo?fmt(r.passo):"–"}</b><span>m por passo</span></div>
+    </div>
+    <div class="compare">
+      <div class="meter" aria-hidden="true">
+        <i style="left:${pos}%"></i>
+        <small style="left:22.2%">0,4</small><small style="left:44.4%">0,8</small><small style="left:55.5%">1,0</small><small style="left:100%">1,8</small>
+      </div>
+      <p>${r.faixa}.</p>
+      ${r.pct?`<p>${fmt(r.pct,0)}% do valor de referência para a idade e o sexo (${fmt(r.norm)} m/s).</p>`:
+        (state.calc.ritmo!=="habitual"?`<p class="hint">A comparação por idade e sexo usa o ritmo habitual.</p>`:`<p class="hint">Informe a idade (20 anos ou mais) para comparar com a referência.</p>`)}
+      <p class="hint">Diferenças de 0,10 m/s entre avaliações costumam ser consideradas clinicamente relevantes.</p>
+    </div>
+    <div class="actions"><button class="btn" id="addCalc">Adicionar ao relatório</button><button class="btn ghost" data-go="resultado">Ver relatório</button></div>`;
+}
+
+function viewCalc(){
+  const c = state.calc;
+  return `<div class="view-head">
+      <h1>Teste de caminhada de 10 m</h1>
+      <p>Cronometre a caminhada no trecho central do percurso, deixando espaço para aceleração e desaceleração. Conte os passos se quiser a cadência.</p>
+    </div>
+    <div class="fields" id="calcForm">
+      <div class="field"><label for="cDist">Distância cronometrada (m)</label><input id="cDist" data-c="dist" inputmode="decimal" value="${esc(c.dist)}"></div>
+      <div class="field"><label for="cTempo">Tempo (s)</label><input id="cTempo" data-c="tempo" inputmode="decimal" value="${esc(c.tempo)}" placeholder="Ex.: 8,2"></div>
+      <div class="field"><label for="cPassos">Passos (opcional)</label><input id="cPassos" data-c="passos" inputmode="numeric" value="${esc(c.passos)}"></div>
+      <div class="field"><label for="cIdade">Idade</label><input id="cIdade" data-c="idade" inputmode="numeric" value="${esc(c.idade)}"></div>
+      <div class="field"><label for="cSexo">Sexo</label><select id="cSexo" data-c="sexo"><option value="F" ${c.sexo==="F"?"selected":""}>Feminino</option><option value="M" ${c.sexo==="M"?"selected":""}>Masculino</option></select></div>
+      <div class="field"><label for="cRitmo">Ritmo</label><select id="cRitmo" data-c="ritmo"><option value="habitual" ${c.ritmo==="habitual"?"selected":""}>Habitual</option><option value="rápido" ${c.ritmo==="rápido"?"selected":""}>Rápido</option></select></div>
+    </div>
+    <div id="calcOut">${calcResultsHtml()}</div>`;
+}
+
+function viewAtlas(){
+  const p = phaseById(state.atlas);
+  const desvios = DEVIATIONS.filter(d=>d.fases.includes(p.id));
+  return `<div class="view-head">
+      <h1>Atlas das fases</h1>
+      <p>Toque em uma fase do ciclo. Os ângulos são do plano sagital e aproximados.</p>
+    </div>
+    ${cycleBar(p.id,true)}
+    <article class="phase-card">
+      <h2>${p.nome}</h2>
+      <p class="phase-sub">${p.ini}% a ${p.fim}% do ciclo, ${p.periodo==="apoio"?"período de apoio":"período de balanço"}</p>
+      <div class="angles">
+        <div class="angle ${p.periodo}"><span>Quadril</span><b>${p.ang.q}</b></div>
+        <div class="angle ${p.periodo}"><span>Joelho</span><b>${p.ang.j}</b></div>
+        <div class="angle ${p.periodo}"><span>Tornozelo</span><b>${p.ang.t}</b></div>
+      </div>
+      <h3>Objetivo funcional</h3><p>${p.objetivo}</p>
+      <h3>Músculos em destaque</h3><ul>${p.musc.map(m=>`<li>${m}</li>`).join("")}</ul>
+      ${desvios.length?`<h3>Desvios comuns nesta fase</h3><ul>${desvios.map(d=>`<li>${d.nome}</li>`).join("")}</ul>`:""}
+    </article>
+    <div class="actions"><button class="btn" data-go="analise" data-filter-go="${p.id}">Analisar esta fase</button></div>`;
+}
+
+/* =========================================================
+   ROTEAMENTO
+   ========================================================= */
+const VIEWS = {"":viewHome, analise:viewAnalise, resultado:viewResultado, calc:viewCalc, atlas:viewAtlas, conta:viewConta, alunos:viewAlunos};
+function render(){
+  const route = location.hash.replace("#","");
+  const logged = !!authUI.user;
+  $("#contaBtn").hidden = !logged || route==="conta";
+  if(!logged){
+    app.innerHTML = viewAuth();
+    $("#backBtn").hidden = true; $("#dock").hidden = true;
+    window.scrollTo(0,0); return;
+  }
+  const fn = VIEWS[route] || viewHome;
+  app.innerHTML = fn();
+  $("#backBtn").hidden = !route || !VIEWS[route];
+  $("#dock").hidden = route!=="analise";
+  updateDock();
+  window.scrollTo(0,0);
+  if(route==="alunos" && isAdmin()) loadAlunos();
+}
+function go(route){ if(location.hash.replace("#","")===route) render(); else location.hash = route; }
+function updateDock(){
+  const n = state.selected.size;
+  $("#dockCount").textContent = n ? `${n} ${n===1?"desvio marcado":"desvios marcados"}` : "Nenhum desvio marcado";
+  $("#dockBtn").disabled = n===0;
+}
+
+/* =========================================================
+   EVENTOS
+   ========================================================= */
+document.addEventListener("click", e=>{
+  const goEl = e.target.closest("[data-go]");
+  if(goEl){ if(goEl.dataset.filterGo) state.filter = goEl.dataset.filterGo; go(goEl.dataset.go); return; }
+  const f = e.target.closest("[data-filter]");
+  if(f){ state.filter = f.dataset.filter; render(); return; }
+  const ph = e.target.closest("[data-phase]");
+  if(ph){ state.atlas = ph.dataset.phase; render(); return; }
+  if(e.target.id==="addCalc"){ state.calcInReport = computeCalc(); toast("Teste adicionado ao relatório"); return; }
+  if(e.target.id==="rmCalc"){ state.calcInReport = null; render(); return; }
+  if(e.target.id==="pdfBtn"){ window.print(); return; }
+  const md = e.target.closest("[data-mode]");
+  if(md){ authUI.mode = md.dataset.mode; authUI.err = ""; authUI.msg = ""; render(); return; }
+  if(e.target.id==="sairBtn"){ auth.signOut(); location.hash = ""; return; }
+  const rm = e.target.closest("[data-rm]");
+  if(rm){ removeAluno(rm.dataset.rm); return; }
+});
+document.addEventListener("change", e=>{
+  if(e.target.dataset.dev){
+    const id = e.target.dataset.dev;
+    e.target.checked ? state.selected.add(id) : state.selected.delete(id);
+    updateDock();
+  }
+  if(e.target.id==="pLado") state.paciente.lado = e.target.value;
+  if(e.target.dataset.c){ state.calc[e.target.dataset.c] = e.target.value; $("#calcOut").innerHTML = calcResultsHtml(); }
+});
+document.addEventListener("input", e=>{
+  if(e.target.id==="pId") state.paciente.id = e.target.value;
+  if(e.target.dataset.c && e.target.tagName==="INPUT"){ state.calc[e.target.dataset.c] = e.target.value; $("#calcOut").innerHTML = calcResultsHtml(); }
+});
+$("#dockBtn").addEventListener("click", ()=>go("resultado"));
+$("#backBtn").addEventListener("click", ()=>go(""));
+$("#contaBtn").addEventListener("click", ()=>go("conta"));
+window.addEventListener("hashchange", render);
+
+/* =========================================================
+   LOGIN E CONTA
+   ========================================================= */
+const authUI = {ready:false, user:null, mode:"login", err:"", msg:"", email:""};
+let db = null, auth = null;
+try{
+  if(!FIREBASE_CONFIG.apiKey.startsWith("SUA_") && window.firebase){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore(); auth = firebase.auth(); auth.languageCode = "pt";
+  }
+}catch(err){ console.warn("Firebase não iniciado:", err); }
+
+const norm = e => String(e||"").trim().toLowerCase();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isAdmin = () => !!authUI.user && norm(authUI.user.email)===norm(ADMIN_EMAIL);
+async function isAllowed(email){
+  email = norm(email);
+  if(email===norm(ADMIN_EMAIL)) return true;
+  const d = await db.collection("alunos").doc(email).get();
+  return d.exists;
+}
+function authErr(code){
+  const wrong = "Email ou senha incorretos. Se é seu primeiro acesso, toque em Criar minha senha.";
+  return ({
+    "auth/invalid-credential":wrong, "auth/wrong-password":wrong, "auth/user-not-found":wrong,
+    "auth/invalid-email":"Informe um email válido.",
+    "auth/email-already-in-use":"Este email já tem senha. Entre com ela ou use Esqueci minha senha.",
+    "auth/weak-password":"A senha precisa ter pelo menos 6 caracteres.",
+    "auth/too-many-requests":"Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.",
+    "auth/network-request-failed":"Sem conexão. Verifique a internet e tente de novo.",
+    "auth/requires-recent-login":"Por segurança, saia e entre de novo antes de alterar a senha."
+  })[code] || "Não foi possível concluir. Tente de novo.";
+}
+
+function viewAuth(){
+  if(!auth) return `<section class="auth"><h1>Configuração pendente</h1><p>Preencha FIREBASE_CONFIG no código para ativar o login.</p></section>`;
+  if(!authUI.ready) return `<section class="auth"><p>Carregando…</p></section>`;
+  const m = authUI.mode;
+  if(m==="negado") return `<section class="auth">
+      <h1>Email fora da lista</h1>
+      <p>Este app é um bônus para os inscritos na Masterclass Biomecânica da Marcha. Se você se inscreveu com outro email, tente com ele.</p>
+      <div class="actions"><button class="btn ghost" data-mode="login">Tentar outro email</button></div>
+    </section>${masterclassBlock()}`;
+  const emailField = `<div class="field"><label for="aEmail">Email</label><input id="aEmail" type="email" autocomplete="email" value="${esc(authUI.email)}"></div>`;
+  const cfg = {
+    login:{t:"Entrar", p:"Acesso exclusivo para os inscritos na Masterclass Biomecânica da Marcha.", b:"Entrar",
+      f:`<div class="field"><label for="aSenha">Senha</label><input id="aSenha" type="password" autocomplete="current-password"></div>`},
+    primeiro:{t:"Primeiro acesso", p:"Use o email da sua inscrição e crie uma senha com pelo menos 6 caracteres.", b:"Criar senha e entrar",
+      f:`<div class="field"><label for="aSenha">Crie sua senha</label><input id="aSenha" type="password" autocomplete="new-password"></div>
+         <div class="field"><label for="aConf">Repita a senha</label><input id="aConf" type="password" autocomplete="new-password"></div>`},
+    esqueci:{t:"Esqueci minha senha", p:"Informe seu email para receber um link e criar uma senha nova.", b:"Enviar link", f:""}
+  }[m];
+  const links = m==="login"
+    ? `<button type="button" class="linkbtn" data-mode="primeiro">Primeiro acesso? Criar minha senha</button>
+       <button type="button" class="linkbtn" data-mode="esqueci">Esqueci minha senha</button>`
+    : `<button type="button" class="linkbtn" data-mode="login">Voltar para o login</button>`;
+  return `<section class="auth">
+      <h1>${cfg.t}</h1><p>${cfg.p}</p>
+      <form id="authForm" novalidate>
+        <div class="fields">${emailField}${cfg.f}</div>
+        ${authUI.err?`<p class="error">${esc(authUI.err)}</p>`:""}
+        ${authUI.msg?`<p class="notice">${esc(authUI.msg)}</p>`:""}
+        <button class="btn" type="submit" style="width:100%;margin-top:8px">${cfg.b}</button>
+      </form>
+      <div class="auth-links">${links}</div>
+    </section>`;
+}
+
+async function submitAuth(){
+  const email = norm($("#aEmail").value), m = authUI.mode;
+  authUI.email = email; authUI.err = ""; authUI.msg = "";
+  if(!EMAIL_RE.test(email)){ authUI.err = "Informe um email válido."; return render(); }
+  try{
+    if(m==="login"){ await auth.signInWithEmailAndPassword(email, $("#aSenha").value); return; }
+    if(m==="esqueci"){
+      await auth.sendPasswordResetEmail(email);
+      authUI.msg = "Se este email tiver acesso, o link chega em alguns minutos. Confira também a caixa de spam.";
+      return render();
+    }
+    if(m==="primeiro"){
+      const s1 = $("#aSenha").value, s2 = $("#aConf").value;
+      if(s1.length<6){ authUI.err = "A senha precisa ter pelo menos 6 caracteres."; return render(); }
+      if(s1!==s2){ authUI.err = "As senhas não conferem."; return render(); }
+      if(!(await isAllowed(email))){ authUI.mode = "negado"; return render(); }
+      await auth.createUserWithEmailAndPassword(email, s1);
+    }
+  }catch(ex){ authUI.err = authErr(ex.code); render(); }
+}
+
+function viewConta(){
+  return `<div class="view-head"><h1>Minha conta</h1><p>${esc(authUI.user.email)}</p></div>
+    <form id="pwForm" novalidate>
+      <h2 class="seg-title">Alterar senha</h2>
+      <div class="fields">
+        <div class="field full"><label for="pAtual">Senha atual</label><input id="pAtual" type="password" autocomplete="current-password"></div>
+        <div class="field"><label for="pNova">Nova senha</label><input id="pNova" type="password" autocomplete="new-password"></div>
+        <div class="field"><label for="pConf">Repita a nova senha</label><input id="pConf" type="password" autocomplete="new-password"></div>
+      </div>
+      <p class="error" id="pErr"></p>
+      <button class="btn" type="submit">Alterar senha</button>
+    </form>
+    <div class="actions">
+      ${isAdmin()?`<button class="btn ghost" data-go="alunos">Gerenciar alunos</button>`:""}
+      <button class="btn ghost" id="sairBtn">Sair</button>
+    </div>`;
+}
+
+async function submitPw(){
+  const atual = $("#pAtual").value, nova = $("#pNova").value, conf = $("#pConf").value, err = $("#pErr");
+  err.textContent = "";
+  if(nova.length<6){ err.textContent = "A nova senha precisa ter pelo menos 6 caracteres."; return; }
+  if(nova!==conf){ err.textContent = "As senhas não conferem."; return; }
+  try{
+    const u = auth.currentUser;
+    await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, atual));
+    await u.updatePassword(nova);
+    $("#pwForm").reset(); toast("Senha alterada");
+  }catch(ex){
+    err.textContent = ["auth/invalid-credential","auth/wrong-password"].includes(ex.code) ? "A senha atual está incorreta." : authErr(ex.code);
+  }
+}
+
+function viewAlunos(){
+  if(!isAdmin()) return viewHome();
+  return `<div class="view-head"><h1>Alunos liberados</h1>
+      <p>Cole os emails dos inscritos, um por linha ou separados por vírgula. Cada aluno cria a própria senha no primeiro acesso.</p></div>
+    <form id="alunosForm" novalidate>
+      <div class="fields"><div class="field full"><label for="alEmails">Emails</label><textarea id="alEmails" rows="6"></textarea></div></div>
+      <p class="error" id="alErr"></p>
+      <button class="btn" type="submit">Liberar acesso</button>
+    </form>
+    <h2 class="seg-title" id="alCount">Lista</h2>
+    <div id="alList"><p class="empty">Carregando…</p></div>`;
+}
+
+async function loadAlunos(){
+  const box = $("#alList"); if(!box) return;
+  try{
+    const snap = await db.collection("alunos").get();
+    const ids = snap.docs.map(d=>d.id).sort();
+    $("#alCount").textContent = `${ids.length} ${ids.length===1?"aluno liberado":"alunos liberados"}`;
+    box.innerHTML = ids.length
+      ? ids.map(id=>`<div class="aluno"><span>${esc(id)}</span><button class="linkbtn" data-rm="${esc(id)}">Remover</button></div>`).join("")
+      : `<p class="empty">Nenhum aluno liberado ainda.</p>`;
+  }catch(ex){ box.innerHTML = `<p class="error">Não foi possível carregar a lista. Confira as regras do Firestore.</p>`; }
+}
+
+async function submitAlunos(){
+  const err = $("#alErr"); err.textContent = "";
+  const found = $("#alEmails").value.match(/[^\s,;<>()"']+@[^\s,;<>()"']+\.[^\s,;<>()"']+/g) || [];
+  const emails = [...new Set(found.map(norm))];
+  if(!emails.length){ err.textContent = "Nenhum email válido encontrado."; return; }
+  try{
+    for(let i=0;i<emails.length;i+=400){
+      const b = db.batch();
+      emails.slice(i,i+400).forEach(e=>b.set(db.collection("alunos").doc(e),{liberadoEm:firebase.firestore.FieldValue.serverTimestamp()}));
+      await b.commit();
+    }
+    $("#alEmails").value = "";
+    toast(`${emails.length} ${emails.length===1?"email liberado":"emails liberados"}`);
+    loadAlunos();
+  }catch(ex){ err.textContent = "Não foi possível salvar. Confira se você entrou com o email de administrador e as regras do Firestore."; }
+}
+
+async function removeAluno(email){
+  if(!confirm(`Remover o acesso de ${email}?`)) return;
+  try{ await db.collection("alunos").doc(email).delete(); toast("Acesso removido"); loadAlunos(); }
+  catch(ex){ toast("Não foi possível remover"); }
+}
+
+document.addEventListener("submit", async e=>{
+  const fns = {authForm:submitAuth, pwForm:submitPw, alunosForm:submitAlunos};
+  const fn = fns[e.target.id]; if(!fn) return;
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]'); const label = btn.textContent;
+  btn.disabled = true; btn.textContent = "Aguarde…";
+  try{ await fn(); }
+  finally{ if(document.body.contains(btn)){ btn.disabled = false; btn.textContent = label; } }
+});
+
+if(auth){
+  auth.onAuthStateChanged(async u=>{
+    if(u){
+      let ok = false;
+      try{ ok = await isAllowed(u.email); }catch(_){}
+      if(!ok){ authUI.user = null; authUI.mode = "negado"; await auth.signOut(); }
+      else { authUI.user = u; authUI.mode = "login"; authUI.err = ""; authUI.msg = ""; }
+    } else authUI.user = null;
+    authUI.ready = true; render();
+  });
+}
+
+render();
+</script>
+</body>
+</html>
