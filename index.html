@@ -195,6 +195,15 @@ button.seg{cursor:pointer}
 .field textarea{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:11px 12px; width:100%; font:inherit; color:inherit; resize:vertical}
 .aluno{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); font-size:.95rem; overflow-wrap:anywhere}
 
+/* Destaques */
+.dev.key{border-left:5px solid var(--swing)}
+.key-label{display:inline-block; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--swing); background:var(--swing-soft); padding:2px 8px; border-radius:6px; margin:0 0 5px}
+.dev.key .key-label{display:table}
+.tag.key{outline:1.5px solid currentColor}
+.atlas-devs li.key .key-label{margin:0 0 0 4px; vertical-align:middle}
+.angle-sub{display:block; font-style:normal; font-size:.82rem; color:var(--muted); margin-top:2px}
+.angle-note{font-size:.82rem; color:var(--muted); margin:-6px 0 0 !important}
+
 .print-only{display:none}
 [hidden]{display:none !important}
 
@@ -277,11 +286,11 @@ e em Configurações > Domínios autorizados, adicionar o domínio do GitHub Pag
 const PHASES = [
   {id:"ic", sigla:"CI", nome:"Contato inicial", ini:0, fim:2, periodo:"apoio",
    objetivo:"Posicionar o membro para iniciar o rolamento sobre o calcanhar.",
-   ang:{q:"20° de flexão", j:"0 a 5° de flexão", t:"Neutro (0°)"},
+   ang:{q:"20° de flexão", j:"0 a 5° de flexão", t:"Neutro (0°)*"}, nota:"* até o contato do antepé com o solo",
    musc:["Glúteo máximo e isquiotibiais (estabilizam o quadril)","Quadríceps (prepara a absorção de carga)","Tibial anterior (mantém o tornozelo em neutro)"]},
   {id:"lr", sigla:"RC", nome:"Resposta à carga", ini:2, fim:12, periodo:"apoio",
    objetivo:"Absorver o choque, estabilizar o membro sob carga e preservar a progressão.",
-   ang:{q:"20° de flexão", j:"15 a 20° de flexão", t:"10° de flexão plantar"},
+   ang:{q:"20° de flexão", j:"15 a 20° de flexão", t:"5° de flexão plantar"},
    musc:["Vastos em ação excêntrica (controlam a flexão do joelho)","Tibial anterior excêntrico (controla a descida do antepé)","Glúteo médio (estabilidade pélvica no plano frontal)","Glúteo máximo"]},
   {id:"mst", sigla:"AM", nome:"Apoio médio", ini:12, fim:31, periodo:"apoio",
    objetivo:"Avançar o corpo sobre o pé apoiado, com estabilidade do membro e do tronco.",
@@ -297,7 +306,7 @@ const PHASES = [
    musc:["Adutor longo e reto femoral (iniciam o avanço da coxa)","Final da atividade do tríceps sural"]},
   {id:"isw", sigla:"BI", nome:"Balanço inicial", ini:62, fim:75, periodo:"balanco",
    objetivo:"Tirar o pé do chão e avançar a coxa.",
-   ang:{q:"15° de flexão", j:"60° de flexão", t:"5 a 10° de flexão plantar"},
+   ang:{q:"15° de flexão", j:"60° de flexão", t:"5 a 10° de flexão plantar", tSub:"retornando para dorsiflexão"},
    musc:["Iliopsoas e flexores do quadril","Cabeça curta do bíceps femoral (flexão do joelho)","Tibial anterior"]},
   {id:"msw", sigla:"BM", nome:"Balanço médio", ini:75, fim:87, periodo:"balanco",
    objetivo:"Avançar o membro mantendo o pé livre do solo.",
@@ -317,7 +326,7 @@ const SEGMENTS = [
 ];
 
 const DEVIATIONS = [
-  {id:"antepe", seg:"pe", nome:"Contato inicial com antepé ou pé plano", fases:["ic"],
+  {id:"antepe", seg:"pe", nome:"Contato inicial com antepé", fases:["ic"],
    causas:["Fraqueza de dorsiflexores","Encurtamento ou contratura do tríceps sural","Joelho mantido em flexão no contato","Dor no calcanhar (ex.: fasciopatia plantar)"],
    testes:["Força de tibial anterior","Teste de Silfverskiöld","Lunge test (dorsiflexão em carga)"],
    conduta:"Fortalecer dorsiflexores, recuperar a dorsiflexão e investigar dor no retropé."},
@@ -342,7 +351,7 @@ const DEVIATIONS = [
    testes:["Força de dorsiflexores e flexores do quadril","ADM de flexão do joelho"],
    conduta:"Identificar qual segmento não encurta o membro e tratar dorsiflexores e flexores do quadril."},
 
-  {id:"recurvato", seg:"joelho", nome:"Hiperextensão do joelho (recurvato)", fases:["lr","mst","tst"],
+  {id:"recurvato", seg:"joelho", nome:"Hiperextensão do joelho (recurvato)", fases:["lr","mst"],
    causas:["Fraqueza de quadríceps (travamento passivo)","Restrição de dorsiflexão ou pé equino","Frouxidão capsuloligamentar posterior"],
    testes:["Força de quadríceps","Lunge test","Hiperextensão passiva comparativa"],
    conduta:"Controle excêntrico do quadríceps em cadeia fechada com leve flexão e mobilidade de tornozelo."},
@@ -393,6 +402,20 @@ const DEVIATIONS = [
    testes:["Força de quadríceps","Teste de Thomas"],
    conduta:"Quadríceps e mobilidade do quadril, com avaliação da coluna lombar."}
 ];
+
+// Desvios principais de cada fase (aparecem em destaque)
+const DESTAQUES = {
+  ic:["antepe"],
+  lr:["slap","pronacao","recurvato"],
+  mst:["pronacao","calc-precoce","trendelenburg","duchenne"],
+  tst:["ext-quadril"],
+  psw:["impulsao"],
+  isw:["arrasto"],
+  msw:["arrasto"],
+  tsw:[]
+};
+const isKey = (devId, phaseId) => (DESTAQUES[phaseId]||[]).includes(devId);
+const keyPhases = devId => PHASES.filter(p=>isKey(devId,p.id)).map(p=>p.id);
 
 // Velocidade de marcha confortável (m/s) — Bohannon & Andrews, 2011
 const NORMS = {
@@ -454,8 +477,13 @@ function masterclassBlock(){
   </section>`;
 }
 
-function phaseTags(ids){
-  return `<div class="tags">${ids.map(id=>{const p=phaseById(id);return `<span class="tag ${p.periodo}">${p.nome}</span>`}).join("")}</div>`;
+function phaseTags(ids, devId){
+  return `<div class="tags">${ids.map(id=>{const p=phaseById(id); const k=devId&&isKey(devId,id);
+    return `<span class="tag ${p.periodo}${k?" key":""}"${k?' title="Desvio principal nesta fase"':""}>${k?"★ ":""}${p.nome}</span>`}).join("")}</div>`;
+}
+function devItem(d, principal){
+  return `<label class="dev${principal?" key":""}"><input type="checkbox" data-dev="${d.id}" ${state.selected.has(d.id)?"checked":""}>
+        <span>${principal?`<span class="key-label">Principal</span>`:""}<span class="dev-name">${d.nome}</span>${phaseTags(d.fases,d.id)}</span></label>`;
 }
 
 /* =========================================================
@@ -476,12 +504,13 @@ function viewHome(){
 }
 
 function viewAnalise(){
-  const list = SEGMENTS.map(s=>{
-    const items = DEVIATIONS.filter(d=>d.seg===s.id && (state.filter==="todas" || d.fases.includes(state.filter)));
+  const f = state.filter;
+  const keys = f==="todas" ? [] : DEVIATIONS.filter(d=>isKey(d.id,f));
+  const keyBlock = keys.length ? `<h2 class="seg-title">Principais nesta fase</h2>` + keys.map(d=>devItem(d,true)).join("") : "";
+  const list = keyBlock + SEGMENTS.map(s=>{
+    const items = DEVIATIONS.filter(d=>d.seg===s.id && (f==="todas" || (d.fases.includes(f) && !isKey(d.id,f))));
     if(!items.length) return "";
-    return `<h2 class="seg-title">${s.nome}</h2>` + items.map(d=>`
-      <label class="dev"><input type="checkbox" data-dev="${d.id}" ${state.selected.has(d.id)?"checked":""}>
-        <span><span class="dev-name">${d.nome}</span>${phaseTags(d.fases)}</span></label>`).join("");
+    return `<h2 class="seg-title">${s.nome}</h2>` + items.map(d=>devItem(d, f==="todas" && keyPhases(d.id).length>0)).join("");
   }).join("");
   const chips = [`<button class="chip" data-filter="todas" aria-pressed="${state.filter==="todas"}">Todas as fases</button>`]
     .concat(PHASES.map(p=>`<button class="chip" data-filter="${p.id}" aria-pressed="${state.filter===p.id}">${p.nome}</button>`)).join("");
@@ -612,11 +641,12 @@ function viewAtlas(){
       <div class="angles">
         <div class="angle ${p.periodo}"><span>Quadril</span><b>${p.ang.q}</b></div>
         <div class="angle ${p.periodo}"><span>Joelho</span><b>${p.ang.j}</b></div>
-        <div class="angle ${p.periodo}"><span>Tornozelo</span><b>${p.ang.t}</b></div>
+        <div class="angle ${p.periodo}"><span>Tornozelo</span><b>${p.ang.t}</b>${p.ang.tSub?`<em class="angle-sub">${p.ang.tSub}</em>`:""}</div>
       </div>
+      ${p.nota?`<p class="angle-note">${p.nota}</p>`:""}
       <h3>Objetivo funcional</h3><p>${p.objetivo}</p>
       <h3>Músculos em destaque</h3><ul>${p.musc.map(m=>`<li>${m}</li>`).join("")}</ul>
-      ${desvios.length?`<h3>Desvios comuns nesta fase</h3><ul>${desvios.map(d=>`<li>${d.nome}</li>`).join("")}</ul>`:""}
+      ${desvios.length?`<h3>Desvios comuns nesta fase</h3><ul class="atlas-devs">${desvios.slice().sort((a,b)=>isKey(b.id,p.id)-isKey(a.id,p.id)).map(d=>isKey(d.id,p.id)?`<li class="key"><strong>${d.nome}</strong> <span class="key-label">Principal</span></li>`:`<li>${d.nome}</li>`).join("")}</ul>`:""}
     </article>
     <div class="actions"><button class="btn" data-go="analise" data-filter-go="${p.id}">Analisar esta fase</button></div>`;
 }

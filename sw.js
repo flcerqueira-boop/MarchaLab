@@ -1,6 +1,6 @@
 // Marcha Lab — service worker
 // Rede primeiro: o app sempre busca a versão nova e usa o cache só quando está offline.
-const CACHE = "marcha-lab-v2";
+const CACHE = "marcha-lab-v3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", e => {
